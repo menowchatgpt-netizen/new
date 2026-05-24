@@ -1,0 +1,1490 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#070811" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>FitFlow — Preview</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%23c6ff3d'/><stop offset='100%25' stop-color='%2322e07e'/></linearGradient></defs><rect x='2' y='2' width='60' height='60' rx='16' fill='%230b0d18'/><path d='M18 40 L28 24 L34 32 L46 18' stroke='url(%23g)' stroke-width='5' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='46' cy='18' r='3.5' fill='%23c6ff3d'/></svg>" />
+<style>
+/* =================================================================
+   FitFlow — single-file vanilla preview build
+   Same design tokens as the React version, no external deps.
+   ================================================================= */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --c-lime: #c6ff3d;
+  --c-green: #22e07e;
+  --c-violet: #7c5cff;
+  --c-pink: #ff5cd1;
+  --c-orange: #ff8a3d;
+  --c-yellow: #ffd23d;
+  --c-red: #ff5c5c;
+  --c-cyan: #3dd9ff;
+  color-scheme: dark;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  box-sizing: border-box;
+}
+
+html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+html { background: #070811; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss02';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color: #eef0f7;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(124, 92, 255, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(61, 217, 255, 0.10), transparent 55%),
+    radial-gradient(1000px 700px at 50% 120%, rgba(198, 255, 61, 0.10), transparent 55%),
+    #070811;
+  background-attachment: fixed;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+}
+
+/* hide native number spinners */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; }
+
+@media (pointer: fine) {
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.16); }
+}
+
+/* ----- layout helpers ----- */
+.app { position: relative; min-height: 100vh; min-height: 100dvh; width: 100%; max-width: 28rem; margin: 0 auto; padding-bottom: calc(var(--safe-bottom) + 5.5rem); }
+.px-safe { padding-left: calc(var(--safe-left) + 1.25rem); padding-right: calc(var(--safe-right) + 1.25rem); }
+.pt-safe { padding-top: calc(var(--safe-top) + 1rem); }
+.tabular { font-variant-numeric: tabular-nums; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* ----- glass surfaces ----- */
+.glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.glass-strong {
+  background: linear-gradient(180deg, rgba(22,26,40,0.85) 0%, rgba(11,13,24,0.85) 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-radius: 1.75rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.6);
+}
+
+/* ----- buttons ----- */
+button { font-family: inherit; cursor: pointer; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  border-radius: 1rem; padding: 0.75rem 1.25rem;
+  font-weight: 600; letter-spacing: -0.01em;
+  border: none; outline: none;
+  transition: all 0.2s ease;
+  user-select: none; -webkit-user-select: none;
+  will-change: transform;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  color: #070811;
+  background: linear-gradient(135deg, var(--c-lime) 0%, var(--c-green) 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 8px 24px -8px rgba(198,255,61,0.6);
+}
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-ghost {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.07); }
+.btn-danger {
+  color: #fca5a5;
+  background: rgba(255,80,100,0.08);
+  border: 1px solid rgba(255,80,100,0.18);
+}
+.btn-icon-sq { width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 1rem; }
+
+/* ----- inputs ----- */
+.input {
+  width: 100%; border-radius: 1rem; padding: 0.875rem 1rem;
+  font-size: 1rem; color: #fff; outline: none;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.2s ease;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+}
+.input::placeholder { color: rgba(255,255,255,0.30); }
+.input:focus {
+  border-color: rgba(198,255,61,0.5);
+  background: rgba(255,255,255,0.05);
+  box-shadow: 0 0 0 4px rgba(198,255,61,0.1);
+}
+.input-error {
+  border-color: rgba(255,80,100,0.4) !important;
+  box-shadow: 0 0 0 4px rgba(255,80,100,0.08) !important;
+}
+.label {
+  display: block; margin-bottom: 0.375rem;
+  font-size: 0.75rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.45);
+}
+
+/* ----- chip ----- */
+.chip {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  border-radius: 9999px; padding: 0.25rem 0.625rem;
+  font-size: 0.75rem; font-weight: 500;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.7);
+  transition: color 0.2s ease;
+  cursor: pointer; white-space: nowrap;
+}
+.chip:hover { color: #fff; }
+.chip.active {
+  color: var(--c-lime);
+  background: rgba(198,255,61,0.10);
+  border-color: rgba(198,255,61,0.30);
+}
+
+/* ----- gradient text ----- */
+.text-grad-lime {
+  background: linear-gradient(135deg, var(--c-lime) 0%, var(--c-green) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.text-grad-violet {
+  background: linear-gradient(135deg, var(--c-violet) 0%, var(--c-cyan) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ----- header ----- */
+.app-header { padding-top: calc(var(--safe-top) + 1rem); }
+.app-header-inner { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.75rem; padding: 0 1.25rem; }
+.app-header h1 { margin: 0; margin-top: 0.25rem; font-size: 1.75rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; text-wrap: balance; }
+.app-header p { margin: 0; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255,255,255,0.4); }
+
+/* ----- bottom nav ----- */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  padding: 0 0.75rem;
+  padding-bottom: calc(var(--safe-bottom) + 0.5rem);
+  pointer-events: none;
+}
+.bottom-nav-inner {
+  pointer-events: auto;
+  position: relative;
+  margin: 0 auto; max-width: 28rem;
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0.375rem;
+  border-radius: 1.75rem;
+  background: linear-gradient(180deg, rgba(22,26,40,0.85) 0%, rgba(11,13,24,0.85) 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 12px 40px -12px rgba(0,0,0,0.5);
+}
+.bottom-nav-pill {
+  position: absolute;
+  top: 0.375rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(198,255,61,0.16) 0%, rgba(34,224,126,0.10) 100%);
+  border: 1px solid rgba(198,255,61,0.22);
+  box-shadow: 0 8px 24px -12px rgba(198,255,61,0.45);
+  transition: left 0.42s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.tab-btn {
+  position: relative;
+  flex: 1; height: 3rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  border-radius: 1rem;
+  background: transparent; border: none;
+  color: rgba(255,255,255,0.55);
+  transition: color 0.3s ease;
+  padding: 0 0.75rem;
+}
+.tab-btn .label {
+  font-size: 0.8125rem; font-weight: 600; letter-spacing: -0.01em;
+  text-transform: none;
+  color: inherit;
+  margin: 0;
+  opacity: 0; max-width: 0; overflow: hidden;
+  transition: opacity 0.3s ease, max-width 0.3s ease;
+  white-space: nowrap;
+}
+.tab-btn.active { color: var(--c-lime); }
+.tab-btn.active .label { opacity: 1; max-width: 8rem; }
+.tab-btn svg { transition: transform 0.3s ease; }
+
+/* ----- progress ring ----- */
+.ring-track { stroke: rgba(255,255,255,0.06); }
+.ring-progress { transition: stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ----- exercise card ----- */
+.ex-card { position: relative; overflow: hidden; }
+.ex-card .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.ex-card .title { margin: 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-card .note { margin: 0.25rem 0 0; font-size: 0.8125rem; color: rgba(255,255,255,0.5); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ex-card .actions { display: flex; gap: 0.375rem; flex-shrink: 0; }
+.ex-card .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 1rem; }
+.stat {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.stat .stat-label { display: flex; align-items: center; gap: 0.375rem; font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.45); }
+.stat .stat-value { font-size: 1rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+.icon-btn {
+  display: grid; place-items: center;
+  width: 2.25rem; height: 2.25rem;
+  border-radius: 0.75rem;
+  border: none; background: transparent;
+  color: rgba(255,255,255,0.6);
+  transition: all 0.2s ease;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.icon-btn:active { transform: scale(0.95); }
+.icon-btn.danger:hover { background: rgba(255,80,100,0.10); color: #fca5a5; }
+
+/* ----- set check ----- */
+.set-check {
+  position: relative;
+  display: grid; place-items: center;
+  width: 3rem; height: 3rem;
+  flex-shrink: 0;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.3s ease;
+  outline: none;
+}
+.set-check:active { transform: scale(0.9); }
+.set-check.checked {
+  background: linear-gradient(135deg, rgba(198,255,61,0.18) 0%, rgba(34,224,126,0.12) 100%);
+  border-color: rgba(198,255,61,0.45);
+  box-shadow: 0 6px 20px -10px rgba(198,255,61,0.5);
+}
+.set-check .num {
+  font-size: 0.875rem; font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.set-check.checked .num { opacity: 0; transform: scale(0.6); }
+.set-check .check {
+  position: absolute;
+  color: var(--c-lime);
+  opacity: 0;
+  transform: scale(0.4) rotate(-45deg);
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.set-check.checked .check { opacity: 1; transform: scale(1) rotate(0); }
+
+/* ----- today row ----- */
+.today-row { position: relative; overflow: hidden; }
+.today-progress {
+  position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, var(--c-lime), var(--c-green));
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.today-row .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.today-row .meta { display: flex; gap: 0.75rem; margin-top: 0.25rem; font-size: 0.8125rem; color: rgba(255,255,255,0.55); }
+.today-row .meta span { display: inline-flex; align-items: center; gap: 0.25rem; }
+.today-row .count { flex-shrink: 0; font-size: 0.875rem; font-weight: 600; color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; }
+.sets-row { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.25rem; margin-top: 1rem; }
+
+/* ----- bottom sheet ----- */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 51;
+  margin: 0 auto; max-width: 28rem;
+  background: linear-gradient(180deg, rgba(22,26,40,0.88) 0%, rgba(11,13,24,0.88) 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 0;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border-top-left-radius: 1.75rem;
+  border-top-right-radius: 1.75rem;
+  display: flex; flex-direction: column;
+  max-height: 92vh;
+  padding-bottom: calc(var(--safe-bottom) + 1rem);
+  box-shadow: 0 -20px 60px -10px rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.06) inset;
+  transform: translateY(100%);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  touch-action: none;
+}
+.sheet.open { transform: translateY(0); }
+.sheet .handle-row { display: flex; justify-content: center; padding-top: 0.625rem; }
+.sheet .handle { display: block; width: 2.5rem; height: 0.375rem; border-radius: 9999px; background: rgba(255,255,255,0.15); }
+.sheet .head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1.25rem 0.75rem; }
+.sheet .head h2 { margin: 0; font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+.sheet .body { flex: 1; overflow-y: auto; padding: 0 1.25rem; }
+.sheet .footer { padding: 0.75rem 1.25rem 0; }
+
+/* ----- confirm dialog ----- */
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center;
+  padding: 0 1.5rem;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.dialog-backdrop.open { opacity: 1; pointer-events: auto; }
+.dialog {
+  position: relative;
+  width: 100%; max-width: 22rem;
+  border-radius: 1.75rem;
+  padding: 1.25rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(22,26,40,0.90) 0%, rgba(11,13,24,0.90) 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  transform: scale(0.92) translateY(8px);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dialog-backdrop.open .dialog { transform: scale(1) translateY(0); opacity: 1; }
+.dialog .icon-wrap {
+  margin: 0 auto 0.75rem;
+  display: grid; place-items: center;
+  width: 3rem; height: 3rem;
+  border-radius: 1rem;
+  background: rgba(255,80,100,0.10);
+  border: 1px solid rgba(255,80,100,0.25);
+  color: #fca5a5;
+}
+.dialog h3 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+.dialog p { margin: 0.375rem 0 0; font-size: 0.875rem; line-height: 1.45; color: rgba(255,255,255,0.55); }
+.dialog .actions { margin-top: 1.25rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+/* ----- stepper ----- */
+.stepper {
+  display: flex; align-items: center; gap: 0.375rem;
+  padding: 0.25rem;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.stepper .step-btn {
+  display: grid; place-items: center;
+  width: 2.5rem; height: 2.5rem;
+  border-radius: 0.75rem;
+  border: none; background: transparent;
+  color: rgba(255,255,255,0.8);
+  transition: all 0.2s ease;
+}
+.stepper .step-btn:hover:not([disabled]) { background: rgba(255,255,255,0.05); }
+.stepper .step-btn:active:not([disabled]) { transform: scale(0.9); }
+.stepper .step-btn[disabled] { opacity: 0.3; cursor: not-allowed; }
+.stepper input {
+  flex: 1; min-width: 0; width: 100%;
+  background: transparent; border: none; outline: none;
+  text-align: center;
+  font-size: 1.125rem; font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  padding: 0;
+}
+.stepper .suffix { padding-right: 0.25rem; font-size: 0.875rem; font-weight: 500; color: rgba(255,255,255,0.4); font-variant-numeric: tabular-nums; }
+
+/* ----- empty state ----- */
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+  padding: 2.5rem 1.25rem; text-align: center;
+}
+.empty .icon-wrap {
+  display: grid; place-items: center;
+  width: 4rem; height: 4rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(124,92,255,0.15), rgba(61,217,255,0.10));
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.empty h3 { margin: 0; font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+.empty p { margin: 0; max-width: 28ch; font-size: 0.875rem; color: rgba(255,255,255,0.55); }
+
+/* ----- page transitions ----- */
+.page {
+  animation: page-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes page-in {
+  0% { opacity: 0; transform: translateY(8px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* ----- list item enter ----- */
+.list-item { animation: item-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes item-in {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ----- calorie card ----- */
+.cal-hero {
+  position: relative; overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,138,61,0.06) 0%, rgba(255,255,255,0.015) 60%);
+}
+.cal-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(500px 220px at 80% -20%, rgba(255,138,61,0.16), transparent 60%);
+  pointer-events: none;
+}
+.cal-hero > * { position: relative; }
+.cal-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.875rem; border-radius: 1.75rem;
+}
+.cal-bar-wrap { position: relative; flex: 1; height: 2.25rem; }
+.cal-bar-track {
+  position: absolute; inset: 0; height: 0.375rem; margin: auto 0;
+  border-radius: 9999px; background: rgba(255,255,255,0.06);
+}
+.cal-bar-fill {
+  position: absolute; inset: 0; height: 0.375rem; margin: auto 0;
+  left: 0; border-radius: 9999px;
+  transform-origin: left center; transform: scaleX(0);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ----- misc ----- */
+.flex { display: flex; }
+.row { display: flex; gap: 0.75rem; align-items: center; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-5 { gap: 1.25rem; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.items-baseline { align-items: baseline; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.flex-wrap { flex-wrap: wrap; }
+.text-center { text-align: center; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-5 { margin-top: 1.25rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.section-title {
+  margin: 0 0 0.625rem 0.25rem;
+  font-size: 0.6875rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.45);
+}
+.text-grad-orange-active {
+  color: var(--c-orange);
+}
+.text-pink { color: var(--c-pink); }
+.text-lime { color: var(--c-lime); }
+.text-muted { color: rgba(255,255,255,0.4); }
+.text-muted-2 { color: rgba(255,255,255,0.55); }
+.text-muted-3 { color: rgba(255,255,255,0.30); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="overlays"></div>
+
+<script>
+'use strict';
+
+/* =================================================================
+   FitFlow — vanilla JS app
+   ================================================================= */
+
+// ---------- icons (inline SVG) ----------
+const I = (path, opts = {}) => {
+  const size = opts.size || 20;
+  const sw = opts.sw || 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+};
+const ICONS = {
+  dumbbell: (o) => I('<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>', o),
+  list: (o) => I('<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>', o),
+  flame: (o) => I('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>', o),
+  plus: (o) => I('<path d="M5 12h14"/><path d="M12 5v14"/>', o),
+  minus: (o) => I('<path d="M5 12h14"/>', o),
+  pencil: (o) => I('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>', o),
+  trash: (o) => I('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>', o),
+  check: (o) => I('<path d="M20 6 9 17l-5-5"/>', o),
+  x: (o) => I('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', o),
+  alert: (o) => I('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>', o),
+  target: (o) => I('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>', o),
+  rotate: (o) => I('<path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>', o),
+  sparkles: (o) => I('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>', o),
+  repeat: (o) => I('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>', o),
+  weight: (o) => I('<circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/>', o),
+  layers: (o) => I('<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>', o),
+};
+
+// ---------- helpers ----------
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+const clampInt = (n, min, max) => { const v = Math.round(Number.isFinite(+n) ? +n : 0); return Math.max(min, Math.min(max, v)); };
+const clampNum = (n, min, max) => { const v = Number.isFinite(+n) ? +n : 0; return Math.max(min, Math.min(max, Math.round(v * 10) / 10)); };
+
+const todayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const WD = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+const MO = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const formatToday = (d = new Date()) => `${WD[d.getDay()]}, ${d.getDate()} ${MO[d.getMonth()]}`;
+const shortDate = (d = new Date()) => `${d.getDate()} ${MO[d.getMonth()].slice(0, 3)}`;
+
+const haptic = (kind = 'tap') => {
+  if (!navigator.vibrate) return;
+  const pat = { tap: 8, soft: 4, success: [0, 18, 30, 24], warning: [0, 20, 60, 20] }[kind] || 8;
+  try { navigator.vibrate(pat); } catch (_) {}
+};
+
+// ---------- store ----------
+const STORAGE_KEY = 'fitflow:v1';
+const defaultState = {
+  exercises: [],
+  progress: {},   // { 'YYYY-MM-DD': { checks: { exId: bool[] } } }
+  calories: {},   // { 'YYYY-MM-DD': { goal, eaten } }
+  defaultCalorieGoal: 2200,
+  activeTab: 'today',
+};
+
+const store = {
+  state: load(),
+  listeners: new Set(),
+  set(updater) {
+    const next = typeof updater === 'function' ? updater(this.state) : updater;
+    this.state = { ...this.state, ...next };
+    persist(this.state);
+    this.listeners.forEach((fn) => fn(this.state));
+  },
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  },
+};
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...defaultState };
+    const parsed = JSON.parse(raw);
+    return { ...defaultState, ...parsed };
+  } catch {
+    return { ...defaultState };
+  }
+}
+function persist(s) {
+  try {
+    const { activeTab, ...rest } = s;
+    void activeTab;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  } catch {}
+}
+
+// ---------- store actions ----------
+const actions = {
+  addExercise(data) {
+    store.set((s) => ({
+      exercises: [...s.exercises, {
+        id: uid(),
+        createdAt: Date.now(),
+        name: data.name.trim(),
+        sets: clampInt(data.sets, 1, 20),
+        reps: clampInt(data.reps, 1, 200),
+        weight: clampNum(data.weight, 0, 1000),
+        note: (data.note || '').trim() || undefined,
+      }],
+    }));
+  },
+  updateExercise(id, data) {
+    store.set((s) => ({
+      exercises: s.exercises.map((e) => e.id === id ? {
+        ...e,
+        name: data.name?.trim() ?? e.name,
+        sets: data.sets !== undefined ? clampInt(data.sets, 1, 20) : e.sets,
+        reps: data.reps !== undefined ? clampInt(data.reps, 1, 200) : e.reps,
+        weight: data.weight !== undefined ? clampNum(data.weight, 0, 1000) : e.weight,
+        note: data.note !== undefined ? ((data.note || '').trim() || undefined) : e.note,
+      } : e),
+    }));
+  },
+  removeExercise(id) {
+    store.set((s) => {
+      const exercises = s.exercises.filter((e) => e.id !== id);
+      const progress = {};
+      for (const [k, v] of Object.entries(s.progress)) {
+        const checks = { ...v.checks };
+        delete checks[id];
+        progress[k] = { checks };
+      }
+      return { exercises, progress };
+    });
+  },
+  toggleSet(exerciseId, setIndex, dateKey) {
+    store.set((s) => {
+      const key = dateKey || todayKey();
+      const ex = s.exercises.find((e) => e.id === exerciseId);
+      if (!ex) return s;
+      const day = s.progress[key] || { checks: {} };
+      const arr = (day.checks[exerciseId] || []).slice();
+      while (arr.length < ex.sets) arr.push(false);
+      arr.length = ex.sets;
+      arr[setIndex] = !arr[setIndex];
+      return { progress: { ...s.progress, [key]: { checks: { ...day.checks, [exerciseId]: arr } } } };
+    });
+  },
+  resetDay(dateKey) {
+    store.set((s) => {
+      const key = dateKey || todayKey();
+      const next = { ...s.progress }; delete next[key];
+      return { progress: next };
+    });
+  },
+  setCalorieGoal(goal, dateKey) {
+    store.set((s) => {
+      const key = dateKey || todayKey();
+      const cur = s.calories[key] || { goal: s.defaultCalorieGoal, eaten: 0 };
+      const safeGoal = clampInt(goal, 0, 20000);
+      return { defaultCalorieGoal: safeGoal, calories: { ...s.calories, [key]: { ...cur, goal: safeGoal } } };
+    });
+  },
+  setCalorieEaten(eaten, dateKey) {
+    store.set((s) => {
+      const key = dateKey || todayKey();
+      const cur = s.calories[key] || { goal: s.defaultCalorieGoal, eaten: 0 };
+      return { calories: { ...s.calories, [key]: { ...cur, eaten: clampInt(eaten, 0, 50000) } } };
+    });
+  },
+  addCalories(delta, dateKey) {
+    const s = store.state;
+    const key = dateKey || todayKey();
+    const cur = s.calories[key] || { goal: s.defaultCalorieGoal, eaten: 0 };
+    actions.setCalorieEaten(cur.eaten + delta, key);
+  },
+  setTab(tab) {
+    store.set({ activeTab: tab });
+  },
+};
+
+function dayStats(state, dateKey) {
+  const k = dateKey || todayKey();
+  const day = state.progress[k] || { checks: {} };
+  let done = 0, total = 0;
+  for (const ex of state.exercises) {
+    total += ex.sets;
+    const arr = day.checks[ex.id] || [];
+    for (let i = 0; i < ex.sets; i++) if (arr[i]) done++;
+  }
+  return { done, total, ratio: total === 0 ? 0 : done / total };
+}
+
+// ---------- render utilities ----------
+function ringSvg({ value, size = 64, stroke = 6, from = '#c6ff3d', to = '#22e07e', innerHTML = '' }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(1, value));
+  const offset = c * (1 - v);
+  const id = 'g' + Math.random().toString(36).slice(2, 8);
+  return `
+    <div class="ring-wrap" style="position:relative;display:grid;place-items:center;width:${size}px;height:${size}px;">
+      <svg width="${size}" height="${size}" style="transform:rotate(-90deg)">
+        <defs>
+          <linearGradient id="${id}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${from}"/>
+            <stop offset="100%" stop-color="${to}"/>
+          </linearGradient>
+        </defs>
+        <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" class="ring-track"/>
+        <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="url(#${id})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}" class="ring-progress"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:grid;place-items:center;">${innerHTML}</div>
+    </div>`;
+}
+
+// ---------- pages ----------
+function renderApp() {
+  const tab = store.state.activeTab;
+  const root = $('#app');
+  let pageHtml = '';
+  if (tab === 'workouts') pageHtml = renderWorkouts();
+  else if (tab === 'today') pageHtml = renderToday();
+  else if (tab === 'calories') pageHtml = renderCalories();
+
+  root.innerHTML = `
+    <div class="app">
+      <div class="page" key="${tab}">${pageHtml}</div>
+      ${renderBottomNav(tab)}
+    </div>`;
+
+  bindGlobalHandlers();
+  positionNavPill();
+}
+
+function renderBottomNav(active) {
+  const tabs = [
+    { id: 'workouts', label: 'Тренировки', icon: ICONS.dumbbell({ size: 20, sw: 2.2 }) },
+    { id: 'today', label: 'Сегодня', icon: ICONS.list({ size: 20, sw: 2.2 }) },
+    { id: 'calories', label: 'Калории', icon: ICONS.flame({ size: 20, sw: 2.2 }) },
+  ];
+  return `
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner" id="nav-inner">
+        <span class="bottom-nav-pill" id="nav-pill" style="left:0;width:0;opacity:0"></span>
+        ${tabs.map((t) => `
+          <button type="button" class="tab-btn ${active === t.id ? 'active' : ''}" data-tab="${t.id}" aria-label="${t.label}">
+            <span style="position:relative;z-index:1;display:inline-flex;align-items:center;gap:0.5rem;">
+              ${t.icon}
+              <span class="label">${t.label}</span>
+            </span>
+          </button>
+        `).join('')}
+      </div>
+    </nav>`;
+}
+
+function positionNavPill() {
+  // run after layout settles
+  requestAnimationFrame(() => {
+    const inner = $('#nav-inner');
+    const pill = $('#nav-pill');
+    if (!inner || !pill) return;
+    const active = inner.querySelector('.tab-btn.active');
+    if (!active) return;
+    const innerRect = inner.getBoundingClientRect();
+    const r = active.getBoundingClientRect();
+    pill.style.left = (r.left - innerRect.left) + 'px';
+    pill.style.width = r.width + 'px';
+    pill.style.opacity = '1';
+  });
+}
+
+// ----- header
+function header({ title, subtitle, right = '' }) {
+  return `
+    <header class="app-header">
+      <div class="app-header-inner">
+        <div style="min-width:0">
+          <p>${escapeHtml(subtitle || formatToday())}</p>
+          <h1 style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(title)}</h1>
+        </div>
+        ${right ? `<div style="flex-shrink:0">${right}</div>` : ''}
+      </div>
+    </header>`;
+}
+
+// ----- WORKOUTS
+function renderWorkouts() {
+  const { exercises } = store.state;
+  const totalSets = exercises.reduce((s, e) => s + e.sets, 0);
+  const right = `
+    <button type="button" class="btn btn-primary btn-icon-sq" data-action="add-exercise" aria-label="Добавить упражнение">
+      ${ICONS.plus({ size: 20, sw: 2.6 })}
+    </button>`;
+  const list = exercises.length === 0
+    ? `<div class="card empty">
+         <div class="icon-wrap text-grad-violet">${ICONS.dumbbell({ size: 26, sw: 2.2 })}</div>
+         <h3>Здесь пока пусто</h3>
+         <p>Добавь первое упражнение в свою программу. Название, подходы, повторы и вес — за 10 секунд.</p>
+         <button type="button" class="btn btn-primary" data-action="add-exercise" style="margin-top:0.5rem">
+           ${ICONS.plus({ size: 18, sw: 2.6 })} Добавить упражнение
+         </button>
+       </div>`
+    : `<div class="flex flex-col gap-3">${exercises.map((e, i) => exerciseCard(e, i)).join('')}</div>`;
+  return `
+    ${header({ title: 'Твоя программа', subtitle: `${exercises.length} упражнений · ${totalSets} подходов`, right })}
+    <section class="px-safe mt-5">${list}</section>`;
+}
+
+function exerciseCard(ex, i) {
+  return `
+    <article class="card ex-card list-item" data-id="${ex.id}" style="animation-delay:${Math.min(i * 0.04, 0.2)}s">
+      <div class="head">
+        <div style="min-width:0;flex:1">
+          <h3 class="title">${escapeHtml(ex.name)}</h3>
+          ${ex.note ? `<p class="note">${escapeHtml(ex.note)}</p>` : ''}
+        </div>
+        <div class="actions">
+          <button type="button" class="icon-btn" data-action="edit" data-id="${ex.id}" aria-label="Редактировать">${ICONS.pencil({ size: 16 })}</button>
+          <button type="button" class="icon-btn danger" data-action="delete" data-id="${ex.id}" aria-label="Удалить">${ICONS.trash({ size: 16 })}</button>
+        </div>
+      </div>
+      <div class="stats">
+        ${stat(ICONS.layers({ size: 14 }), 'Подходы', ex.sets)}
+        ${stat(ICONS.repeat({ size: 14 }), 'Повторы', ex.reps)}
+        ${stat(ICONS.weight({ size: 14 }), 'Вес', ex.weight === 0 ? '—' : `${ex.weight} кг`)}
+      </div>
+    </article>`;
+}
+function stat(icon, label, value) {
+  return `
+    <div class="stat">
+      <div class="stat-label">
+        <span style="color:rgba(255,255,255,0.35);display:inline-flex">${icon}</span>
+        ${label}
+      </div>
+      <div class="stat-value">${escapeHtml(String(value))}</div>
+    </div>`;
+}
+
+// ----- TODAY
+function renderToday() {
+  const s = store.state;
+  const stats = dayStats(s);
+  const k = todayKey();
+  const day = s.progress[k] || { checks: {} };
+  const allDone = stats.total > 0 && stats.done === stats.total;
+  const ratioPct = Math.round(stats.ratio * 100);
+
+  const right = ringSvg({
+    value: stats.ratio, size: 56, stroke: 5,
+    innerHTML: `<span class="tabular" style="font-size:12px;font-weight:700;line-height:1">${ratioPct}<span style="font-size:9px;color:rgba(255,255,255,0.4)">%</span></span>`,
+  });
+
+  if (s.exercises.length === 0) {
+    return `
+      ${header({ title: 'Тренировка дня', right })}
+      <section class="px-safe mt-5">
+        <div class="card empty">
+          <div class="icon-wrap text-grad-violet">${ICONS.list({ size: 26, sw: 2.2 })}</div>
+          <h3>Программа не настроена</h3>
+          <p>Добавь упражнения во вкладке «Тренировки» — и они появятся здесь для отметки подходов.</p>
+          <button type="button" class="btn btn-primary" data-action="goto-workouts" style="margin-top:0.5rem">
+            Перейти к тренировкам
+          </button>
+        </div>
+      </section>`;
+  }
+
+  const summary = `
+    <div class="card" style="position:relative;overflow:hidden;margin-bottom:0.75rem">
+      ${allDone ? `<div style="position:absolute;inset:0;background:radial-gradient(500px 200px at 50% 100%, rgba(198,255,61,0.18), transparent 60%);pointer-events:none"></div>` : ''}
+      <div class="row" style="position:relative">
+        <div style="display:grid;place-items:center;width:3rem;height:3rem;border-radius:1rem;background:${allDone ? 'linear-gradient(135deg, rgba(198,255,61,0.16), rgba(34,224,126,0.12))' : 'rgba(255,255,255,0.04)'};border:1px solid ${allDone ? 'rgba(198,255,61,0.3)' : 'rgba(255,255,255,0.06)'};color:${allDone ? 'var(--c-lime)' : 'rgba(255,255,255,0.55)'}">
+          ${ICONS.sparkles({ size: 20 })}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,255,255,0.4)">Прогресс</div>
+          <div class="tabular" style="margin-top:0.125rem;display:flex;align-items:baseline;gap:0.5rem;font-size:1.25rem;font-weight:700;line-height:1.1">
+            <span class="${allDone ? 'text-grad-lime' : ''}">${stats.done}</span>
+            <span class="text-muted-3">/ ${stats.total}</span>
+            <span style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);margin-left:0.25rem">подходов</span>
+          </div>
+        </div>
+        ${stats.done > 0 ? `<button type="button" class="icon-btn" data-action="reset-day" aria-label="Сбросить день">${ICONS.rotate({ size: 16 })}</button>` : ''}
+      </div>
+    </div>`;
+
+  const rows = s.exercises.map((ex, i) => {
+    const checks = day.checks[ex.id] || [];
+    const done = checks.filter(Boolean).length;
+    const isComplete = done === ex.sets;
+    const fill = ex.sets === 0 ? 0 : done / ex.sets;
+    return `
+      <article class="card today-row list-item" style="animation-delay:${Math.min(i * 0.04, 0.2)}s">
+        <div class="today-progress" style="transform:scaleX(${fill})"></div>
+        <div class="head">
+          <div style="min-width:0;flex:1">
+            <h3 class="title ${isComplete ? 'text-grad-lime' : ''}" style="margin:0;font-size:1.0625rem;font-weight:600;line-height:1.2;letter-spacing:-0.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(ex.name)}</h3>
+            <div class="meta">
+              <span>${ICONS.repeat({ size: 13 })} <span class="tabular">${ex.reps}</span> <span class="text-muted-3">повт.</span></span>
+              ${ex.weight > 0 ? `<span>${ICONS.weight({ size: 13 })} <span class="tabular">${ex.weight}</span> <span class="text-muted-3">кг</span></span>` : ''}
+            </div>
+          </div>
+          <div class="count tabular">
+            <span class="${isComplete ? 'text-lime' : ''}">${done}</span>
+            <span class="text-muted-3"> / ${ex.sets}</span>
+          </div>
+        </div>
+        <div class="sets-row no-scrollbar">
+          ${Array.from({ length: ex.sets }, (_, idx) => `
+            <button type="button" class="set-check ${checks[idx] ? 'checked' : ''}" data-action="toggle-set" data-id="${ex.id}" data-idx="${idx}" aria-label="Подход ${idx + 1}, ${checks[idx] ? 'выполнен' : 'не выполнен'}" aria-pressed="${!!checks[idx]}">
+              <span class="num">${idx + 1}</span>
+              <span class="check">${ICONS.check({ size: 20, sw: 3.5 })}</span>
+            </button>
+          `).join('')}
+        </div>
+      </article>`;
+  }).join('');
+
+  return `
+    ${header({ title: allDone ? 'Огонь, готово!' : 'Тренировка дня', right })}
+    <section class="px-safe mt-5">
+      ${summary}
+      <div class="flex flex-col gap-3">${rows}</div>
+    </section>`;
+}
+
+// ----- CALORIES
+function renderCalories() {
+  const s = store.state;
+  const k = todayKey();
+  const cur = s.calories[k] || { goal: s.defaultCalorieGoal, eaten: 0 };
+  const goal = cur.goal, eaten = cur.eaten;
+  const ratio = goal > 0 ? Math.min(eaten / goal, 1) : 0;
+  const remaining = goal - eaten;
+  const overshoot = remaining < 0;
+
+  const right = `
+    <button type="button" class="btn btn-ghost" data-action="open-goal" aria-label="Изменить цель" style="height:2.75rem;border-radius:1rem;padding:0 0.75rem;font-size:0.8125rem">
+      ${ICONS.target({ size: 16 })} <span class="tabular">${goal}</span>
+    </button>`;
+
+  const ringHtml = ringSvg({
+    value: ratio, size: 120, stroke: 10,
+    from: overshoot ? '#ff5c5c' : '#ff8a3d',
+    to: overshoot ? '#ff5cd1' : '#ffd23d',
+    innerHTML: `<span style="color:${overshoot ? '#fca5a5' : 'var(--c-orange)'}">${ICONS.flame({ size: 20 })}</span>`,
+  });
+
+  const quick = [100, 250, 500].map((q) => `
+    <button type="button" class="btn btn-ghost" data-action="add-cal" data-delta="${q}" style="padding:0.5rem 0.75rem;font-size:0.8125rem">
+      ${ICONS.plus({ size: 14, sw: 2.6 })} <span class="tabular" style="font-weight:600">${q}</span>
+    </button>`).join('');
+
+  const minus = eaten > 0 ? `
+    <button type="button" class="btn btn-ghost" data-action="add-cal" data-delta="-100" style="padding:0.5rem 0.75rem;font-size:0.8125rem">
+      ${ICONS.minus({ size: 14, sw: 2.6 })} <span class="tabular" style="font-weight:600">100</span>
+    </button>` : '';
+
+  // history
+  const items = [];
+  for (let i = 1; i <= 6; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const kk = todayKey(d);
+    const data = s.calories[kk];
+    if (data && (data.eaten > 0 || data.goal !== goal)) items.push({ key: kk, date: d, eaten: data.eaten, goal: data.goal });
+  }
+  const historyHtml = items.length === 0
+    ? `<div class="card text-center text-muted-2" style="font-size:0.875rem">Здесь будут появляться твои предыдущие дни.</div>`
+    : `<div class="flex flex-col gap-2">${items.map(({ key, date, eaten: e, goal: g }) => {
+        const r = g > 0 ? Math.min(e / g, 1) : 0;
+        const over = e > g;
+        return `
+          <div class="card cal-row" data-key="${key}" style="padding:0.875rem">
+            <div class="cal-bar-wrap">
+              <div class="cal-bar-track"></div>
+              <div class="cal-bar-fill" style="background:${over ? 'linear-gradient(90deg, #ff5c5c, #ff5cd1)' : 'linear-gradient(90deg, #ff8a3d, #ffd23d)'};transform:scaleX(${r})"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;font-size:0.6875rem;font-weight:500;color:rgba(255,255,255,0.55)">
+                <span>${escapeHtml(shortDate(date))}</span>
+                <span class="tabular">
+                  <span style="color:${over ? 'var(--c-pink)' : 'rgba(255,255,255,0.75)'}">${e}</span>
+                  <span class="text-muted-3"> / ${g}</span>
+                </span>
+              </div>
+            </div>
+          </div>`;
+      }).join('')}</div>`;
+
+  return `
+    ${header({ title: 'Калории', right })}
+    <section class="px-safe mt-5">
+      <div class="card cal-hero">
+        <div class="row" style="gap:1.25rem">
+          ${ringHtml}
+          <div style="min-width:0;flex:1">
+            <div style="font-size:0.6875rem;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:rgba(255,255,255,0.45)">Сегодня</div>
+            <div class="tabular" style="margin-top:0.25rem;display:flex;align-items:baseline;gap:0.375rem">
+              <span id="cal-eaten" style="font-size:2.5rem;font-weight:700;line-height:1;letter-spacing:-0.02em">${eaten}</span>
+              <span style="font-size:0.875rem;font-weight:600;color:rgba(255,255,255,0.4)">ккал</span>
+            </div>
+            <div class="tabular" style="margin-top:0.5rem;font-size:0.8125rem;color:rgba(255,255,255,0.55)">
+              ${overshoot
+                ? `<span class="text-pink">+${Math.abs(remaining)}</span> <span class="text-muted">сверх цели</span>`
+                : `<span class="text-lime">${remaining}</span> <span class="text-muted">осталось</span>`}
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-5">
+          ${quick}
+          ${minus}
+          <button type="button" class="btn btn-primary" data-action="open-eaten" style="margin-left:auto;padding:0.5rem 0.75rem;font-size:0.8125rem">
+            ${ICONS.pencil({ size: 14, sw: 2.6 })} Ввести
+          </button>
+        </div>
+        ${eaten > 0 ? `<div class="flex justify-end mt-3"><button type="button" class="icon-btn" data-action="reset-calories" style="font-size:0.75rem;width:auto;height:auto;padding:0.25rem 0.375rem;color:rgba(255,255,255,0.45);gap:0.25rem;display:inline-flex;align-items:center;border-radius:0.5rem">${ICONS.rotate({ size: 12 })} Сбросить день</button></div>` : ''}
+      </div>
+
+      <section class="mt-6">
+        <h2 class="section-title">Последние дни</h2>
+        ${historyHtml}
+      </section>
+    </section>`;
+}
+
+// ---------- event handlers ----------
+let actionBound = false;
+function bindGlobalHandlers() {
+  // tab switching — re-bound each render because nav is part of main render tree
+  $$('#nav-inner .tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab && tab !== store.state.activeTab) {
+        haptic('tap');
+        actions.setTab(tab);
+      }
+    });
+  });
+
+  // delegated actions — bind exactly once for the lifetime of the page
+  if (!actionBound) {
+    document.body.addEventListener('click', onAction, { capture: false });
+    actionBound = true;
+  }
+}
+function onAction(e) {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const action = t.dataset.action;
+  const id = t.dataset.id;
+
+  switch (action) {
+    case 'add-exercise': haptic('tap'); openExerciseForm(null); break;
+    case 'edit': {
+      haptic('tap');
+      const ex = store.state.exercises.find((x) => x.id === id);
+      if (ex) openExerciseForm(ex);
+      break;
+    }
+    case 'delete': {
+      const ex = store.state.exercises.find((x) => x.id === id);
+      if (!ex) break;
+      haptic('warning');
+      openConfirm({
+        title: 'Удалить упражнение?',
+        description: `«${ex.name}» исчезнет из программы.`,
+        confirmLabel: 'Удалить',
+        destructive: true,
+        onConfirm: () => { actions.removeExercise(ex.id); haptic('success'); },
+      });
+      break;
+    }
+    case 'goto-workouts': haptic('tap'); actions.setTab('workouts'); break;
+    case 'toggle-set': {
+      const idx = parseInt(t.dataset.idx, 10);
+      const ex = store.state.exercises.find((x) => x.id === id);
+      if (!ex) break;
+      const checks = (store.state.progress[todayKey()]?.checks?.[id] || []);
+      haptic(checks[idx] ? 'soft' : 'success');
+      actions.toggleSet(id, idx);
+      break;
+    }
+    case 'reset-day': {
+      haptic('warning');
+      openConfirm({
+        title: 'Сбросить прогресс?',
+        description: 'Все галочки за сегодня будут очищены. Программу это не затронет.',
+        confirmLabel: 'Сбросить', destructive: true,
+        onConfirm: () => { actions.resetDay(); haptic('success'); },
+      });
+      break;
+    }
+    case 'open-goal': haptic('tap'); openGoalSheet(); break;
+    case 'open-eaten': haptic('tap'); openEatenSheet(); break;
+    case 'add-cal': {
+      haptic('tap');
+      actions.addCalories(parseInt(t.dataset.delta, 10) || 0);
+      break;
+    }
+    case 'reset-calories': {
+      haptic('warning');
+      openConfirm({
+        title: 'Сбросить калории?',
+        description: 'Текущее значение калорий за сегодня будет очищено.',
+        confirmLabel: 'Сбросить', destructive: true,
+        onConfirm: () => { actions.setCalorieEaten(0); haptic('success'); },
+      });
+      break;
+    }
+  }
+}
+
+// ---------- exercise form sheet ----------
+const SUGGESTIONS = ['Жим лёжа', 'Приседания', 'Становая тяга', 'Подтягивания', 'Жим стоя', 'Тяга к поясу', 'Отжимания', 'Планка'];
+
+function openExerciseForm(initial) {
+  const isEdit = !!initial;
+  const data = initial ? { ...initial, note: initial.note || '' } : { name: '', sets: 4, reps: 10, weight: 0, note: '' };
+  let touched = false;
+
+  const body = `
+    <div class="flex flex-col gap-5" style="padding:0.25rem 0 0.5rem">
+      <div>
+        <label class="label" for="ex-name">Название</label>
+        <input id="ex-name" class="input" type="text" placeholder="Например, Жим лёжа" autocomplete="off" spellcheck="false" maxlength="60" value="${escapeHtml(data.name)}"/>
+        ${!isEdit ? `<div class="no-scrollbar" style="display:flex;gap:0.375rem;overflow-x:auto;padding-bottom:0.25rem;margin-top:0.5rem">
+          ${SUGGESTIONS.map((s) => `<button type="button" class="chip" data-suggest="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}
+        </div>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div><span class="label">Подходы</span>${stepperHtml({ value: data.sets, min: 1, max: 20, name: 'sets' })}</div>
+        <div><span class="label">Повторы</span>${stepperHtml({ value: data.reps, min: 1, max: 200, name: 'reps' })}</div>
+      </div>
+      <div><span class="label">Вес</span>${stepperHtml({ value: data.weight, min: 0, max: 500, step: 2.5, suffix: 'кг', name: 'weight' })}</div>
+      <div>
+        <label class="label" for="ex-note">Заметка <span style="text-transform:none;color:rgba(255,255,255,0.30)">(не обязательно)</span></label>
+        <textarea id="ex-note" class="input" style="min-height:88px;resize:none" placeholder="Техника, темп, оборудование..." maxlength="200">${escapeHtml(data.note)}</textarea>
+      </div>
+    </div>`;
+
+  const footer = `
+    <div class="flex gap-2">
+      <button type="button" class="btn btn-ghost flex-1" data-sheet-cancel>Отмена</button>
+      <button type="button" class="btn btn-primary flex-1" data-sheet-submit>${isEdit ? 'Сохранить' : 'Добавить'}</button>
+    </div>`;
+
+  const sheet = openSheet({ title: isEdit ? 'Редактирование упражнения' : 'Новое упражнение', body, footer });
+
+  // bind stepper handlers
+  bindSteppers(sheet, data);
+
+  // suggestions
+  $$('[data-suggest]', sheet).forEach((b) => {
+    b.addEventListener('click', () => {
+      $('#ex-name', sheet).value = b.dataset.suggest;
+      data.name = b.dataset.suggest;
+    });
+  });
+
+  // name input
+  const nameInput = $('#ex-name', sheet);
+  nameInput.addEventListener('input', () => { data.name = nameInput.value; if (touched) nameInput.classList.toggle('input-error', !data.name.trim()); });
+  nameInput.addEventListener('blur', () => { touched = true; nameInput.classList.toggle('input-error', !data.name.trim()); });
+
+  $('#ex-note', sheet).addEventListener('input', (e) => { data.note = e.target.value; });
+
+  // submit
+  $('[data-sheet-submit]', sheet).addEventListener('click', () => {
+    if (!data.name.trim()) {
+      touched = true;
+      nameInput.classList.add('input-error');
+      haptic('warning');
+      nameInput.focus();
+      return;
+    }
+    haptic('success');
+    if (isEdit) actions.updateExercise(initial.id, data);
+    else actions.addExercise(data);
+    closeSheet(sheet);
+  });
+
+  // focus name on open after animation
+  setTimeout(() => { if (!isEdit) nameInput.focus({ preventScroll: true }); }, 320);
+}
+
+function stepperHtml({ value, min = 0, max = 999, step = 1, suffix, name }) {
+  return `
+    <div class="stepper" data-stepper data-name="${name}" data-min="${min}" data-max="${max}" data-step="${step}">
+      <button type="button" class="step-btn" data-step-dec aria-label="Уменьшить">${ICONS.minus({ size: 16 })}</button>
+      <input type="number" inputmode="decimal" value="${value}"/>
+      ${suffix ? `<span class="suffix">${suffix}</span>` : ''}
+      <button type="button" class="step-btn" data-step-inc aria-label="Увеличить">${ICONS.plus({ size: 16 })}</button>
+    </div>`;
+}
+
+function bindSteppers(root, data) {
+  $$('[data-stepper]', root).forEach((wrap) => {
+    const min = parseFloat(wrap.dataset.min);
+    const max = parseFloat(wrap.dataset.max);
+    const step = parseFloat(wrap.dataset.step);
+    const name = wrap.dataset.name;
+    const input = $('input', wrap);
+    const dec = $('[data-step-dec]', wrap);
+    const inc = $('[data-step-inc]', wrap);
+    const round = (n) => step >= 1 ? Math.round(n) : Math.round(n * 10) / 10;
+    const clamp = (n) => Math.max(min, Math.min(max, n));
+    const sync = () => {
+      dec.disabled = parseFloat(input.value) <= min;
+      inc.disabled = parseFloat(input.value) >= max;
+    };
+    sync();
+    dec.addEventListener('click', () => {
+      const next = clamp(round(parseFloat(input.value || 0) - step));
+      if (next !== parseFloat(input.value)) { haptic('soft'); input.value = next; data[name] = next; sync(); }
+    });
+    inc.addEventListener('click', () => {
+      const next = clamp(round(parseFloat(input.value || 0) + step));
+      if (next !== parseFloat(input.value)) { haptic('soft'); input.value = next; data[name] = next; sync(); }
+    });
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      data[name] = clamp(Number.isFinite(v) ? v : min);
+      sync();
+    });
+    input.addEventListener('blur', () => {
+      input.value = data[name];
+      sync();
+    });
+  });
+}
+
+// ---------- goal & eaten sheets ----------
+function openGoalSheet() {
+  const s = store.state;
+  const cur = s.calories[todayKey()] || { goal: s.defaultCalorieGoal, eaten: 0 };
+  const data = { goal: cur.goal };
+  const presets = [1500, 1800, 2000, 2200, 2500, 2800, 3000];
+  const body = `
+    <div class="flex flex-col gap-4" style="padding:0.25rem 0 0.5rem">
+      <p style="font-size:0.875rem;color:rgba(255,255,255,0.55);margin:0">Установи целевое количество калорий на день. Это значение будет применяться по умолчанию.</p>
+      <div><span class="label">Цель, ккал</span>${stepperHtml({ value: data.goal, min: 500, max: 6000, step: 50, suffix: 'ккал', name: 'goal' })}</div>
+      <div class="no-scrollbar" style="display:flex;gap:0.375rem;overflow-x:auto;padding-bottom:0.25rem">
+        ${presets.map((v) => `<button type="button" class="chip ${v === data.goal ? 'active' : ''}" data-preset="${v}">${v}</button>`).join('')}
+      </div>
+    </div>`;
+  const footer = `<button type="button" class="btn btn-primary" style="width:100%" data-sheet-cancel>Готово</button>`;
+
+  const sheet = openSheet({ title: 'Цель на день', body, footer });
+  bindSteppers(sheet, data);
+  const stepperInput = $('[data-stepper] input', sheet);
+  stepperInput.addEventListener('change', () => { actions.setCalorieGoal(data.goal); refreshPresets(); });
+  stepperInput.addEventListener('blur', () => { actions.setCalorieGoal(data.goal); refreshPresets(); });
+  $$('[data-step-dec], [data-step-inc]', sheet).forEach((b) => b.addEventListener('click', () => { actions.setCalorieGoal(data.goal); refreshPresets(); }));
+
+  $$('[data-preset]', sheet).forEach((b) => {
+    b.addEventListener('click', () => {
+      haptic('soft');
+      const v = parseInt(b.dataset.preset, 10);
+      data.goal = v;
+      stepperInput.value = v;
+      actions.setCalorieGoal(v);
+      refreshPresets();
+    });
+  });
+
+  function refreshPresets() {
+    $$('[data-preset]', sheet).forEach((b) => b.classList.toggle('active', parseInt(b.dataset.preset, 10) === data.goal));
+  }
+}
+
+function openEatenSheet() {
+  const s = store.state;
+  const cur = s.calories[todayKey()] || { goal: s.defaultCalorieGoal, eaten: 0 };
+  const data = { eaten: cur.eaten };
+  const presets = [500, 1000, 1500, 2000, 2500, 3000];
+  const body = `
+    <div class="flex flex-col gap-4" style="padding:0.25rem 0 0.5rem">
+      <p style="font-size:0.875rem;color:rgba(255,255,255,0.55);margin:0">Введи общее количество калорий, съеденных за день. Можно править в любой момент.</p>
+      <div><span class="label">Сегодня съедено, ккал</span>${stepperHtml({ value: data.eaten, min: 0, max: 20000, step: 50, suffix: 'ккал', name: 'eaten' })}</div>
+      <div class="no-scrollbar" style="display:flex;gap:0.375rem;overflow-x:auto;padding-bottom:0.25rem">
+        ${presets.map((v) => `<button type="button" class="chip" data-preset="${v}">${v}</button>`).join('')}
+      </div>
+    </div>`;
+  const footer = `<button type="button" class="btn btn-primary" style="width:100%" data-sheet-cancel>Сохранить</button>`;
+  const sheet = openSheet({ title: 'Сколько съедено', body, footer });
+  bindSteppers(sheet, data);
+  const stepperInput = $('[data-stepper] input', sheet);
+  const apply = () => actions.setCalorieEaten(data.eaten);
+  stepperInput.addEventListener('change', apply);
+  stepperInput.addEventListener('blur', apply);
+  $$('[data-step-dec], [data-step-inc]', sheet).forEach((b) => b.addEventListener('click', apply));
+  $$('[data-preset]', sheet).forEach((b) => b.addEventListener('click', () => {
+    haptic('soft');
+    const v = parseInt(b.dataset.preset, 10);
+    data.eaten = v;
+    stepperInput.value = v;
+    actions.setCalorieEaten(v);
+  }));
+}
+
+// ---------- generic sheet ----------
+function openSheet({ title, body, footer = '' }) {
+  const overlay = $('#overlays');
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="sheet-backdrop" data-sheet-backdrop></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+      <div class="handle-row" data-handle><span class="handle"></span></div>
+      <div class="head"><h2>${escapeHtml(title)}</h2><button type="button" class="icon-btn" data-sheet-cancel aria-label="Закрыть">${ICONS.x({ size: 18 })}</button></div>
+      <div class="body">${body}</div>
+      ${footer ? `<div class="footer">${footer}</div>` : ''}
+    </div>`;
+  overlay.appendChild(wrap);
+  const backdrop = $('[data-sheet-backdrop]', wrap);
+  const sheet = $('.sheet', wrap);
+
+  // animate in
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    backdrop.classList.add('open');
+    sheet.classList.add('open');
+  });
+
+  const close = () => closeSheet(sheet);
+  backdrop.addEventListener('click', close);
+  $$('[data-sheet-cancel]', wrap).forEach((b) => b.addEventListener('click', close));
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  window.addEventListener('keydown', onKey);
+
+  // drag-to-dismiss
+  bindSheetDrag(sheet, close);
+
+  // remember cleanup
+  sheet._cleanup = () => {
+    window.removeEventListener('keydown', onKey);
+    document.body.style.overflow = '';
+  };
+
+  return sheet;
+}
+
+function closeSheet(sheet) {
+  if (!sheet) return;
+  const wrap = sheet.parentElement;
+  const backdrop = wrap?.querySelector('[data-sheet-backdrop]');
+  sheet.classList.remove('open');
+  backdrop?.classList.remove('open');
+  setTimeout(() => {
+    sheet._cleanup?.();
+    wrap?.remove();
+  }, 420);
+}
+
+function bindSheetDrag(sheet, close) {
+  let startY = 0, currentY = 0, dragging = false, startTime = 0;
+  const handleArea = sheet.querySelector('[data-handle]');
+  const onStart = (y) => {
+    dragging = true; startY = y; currentY = 0; startTime = performance.now();
+    sheet.style.transition = 'none';
+  };
+  const onMove = (y) => {
+    if (!dragging) return;
+    currentY = Math.max(0, y - startY);
+    sheet.style.transform = `translateY(${currentY}px)`;
+  };
+  const onEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    const dt = performance.now() - startTime;
+    const v = currentY / Math.max(dt, 1) * 1000;
+    if (currentY > 120 || v > 600) close();
+    else sheet.style.transform = '';
+  };
+  handleArea.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
+  handleArea.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY), { passive: true });
+  handleArea.addEventListener('touchend', onEnd);
+  handleArea.addEventListener('mousedown', (e) => { onStart(e.clientY); const mv = (m) => onMove(m.clientY); const mu = () => { onEnd(); window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', mu); }; window.addEventListener('mousemove', mv); window.addEventListener('mouseup', mu); });
+}
+
+// ---------- confirm dialog ----------
+function openConfirm({ title, description, confirmLabel = 'Подтвердить', cancelLabel = 'Отмена', destructive = false, onConfirm }) {
+  const overlay = $('#overlays');
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="dialog-backdrop">
+      <div class="dialog" role="alertdialog" aria-modal="true">
+        <div class="icon-wrap" style="${destructive ? '' : 'background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7)'}">${ICONS.alert({ size: 20 })}</div>
+        <h3>${escapeHtml(title)}</h3>
+        ${description ? `<p>${escapeHtml(description)}</p>` : ''}
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" data-cancel>${escapeHtml(cancelLabel)}</button>
+          <button type="button" class="btn ${destructive ? 'btn-danger' : 'btn-primary'}" data-confirm>${escapeHtml(confirmLabel)}</button>
+        </div>
+      </div>
+    </div>`;
+  overlay.appendChild(wrap);
+  const backdrop = $('.dialog-backdrop', wrap);
+  requestAnimationFrame(() => backdrop.classList.add('open'));
+  const close = () => {
+    backdrop.classList.remove('open');
+    setTimeout(() => wrap.remove(), 240);
+    window.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  window.addEventListener('keydown', onKey);
+  $('[data-cancel]', wrap).addEventListener('click', close);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  $('[data-confirm]', wrap).addEventListener('click', () => { close(); onConfirm?.(); });
+}
+
+// ---------- bootstrap ----------
+let scheduled = false;
+store.subscribe(() => {
+  if (scheduled) return;
+  scheduled = true;
+  requestAnimationFrame(() => {
+    scheduled = false;
+    renderApp();
+  });
+});
+
+// reposition the nav pill on resize / orientation change
+window.addEventListener('resize', positionNavPill);
+window.addEventListener('orientationchange', positionNavPill);
+
+// click handler is bound once at module level via bindGlobalHandlers' delegated listener
+// — but to avoid double binding on each render, we attach delegated listener once here:
+document.addEventListener('DOMContentLoaded', () => {
+  // initial render
+  renderApp();
+});
+
+// In case DOMContentLoaded already fired:
+if (document.readyState !== 'loading') renderApp();
+</script>
+</body>
+</html>
